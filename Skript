@@ -1,40 +1,47 @@
 let CONFIG = {
   target: "http://neverssl.com", // Verlässlicher HTTP-Test
-  pingInterval: 300000,         // Alle 5 Minuten prüfen (300.000 ms)
-  failThreshold: 18,            // 18 Versuche * 5 Min = 90 Minuten Ausfallzeit
+  pingInterval: 6000,           // Test-Modus: Alle 6 Sekunden prüfen (6000 ms)
+  failThreshold: 10,            // Test-Modus: Nach 10 Fehlschlägen (60 Sek.) Neustart
   powerOffDuration: 15000       // Strom für 15 Sekunden trennen
 };
 
-let failCount = 0;
+let checkCount = 0; // Gesamtzahl aller durchgeführten Checks
+let failCount = 0;  // Zähler für aufeinanderfolgende Fehlschläge
 
 function checkInternet() {
+  checkCount++; // Gesamtzähler bei jedem Durchlauf erhöhen
+  
   Shelly.call(
     "HTTP.GET",
-    { url: CONFIG.target, timeout: 10 },
+    { url: CONFIG.target, timeout: 3 },
     function (result, error_code) {
       if (error_code !== 0) {
         failCount++;
-        print("Internet offline seit " + (failCount * 5) + " Minuten.");
+        print("DEBUG [Check #" + checkCount + "]: Internet OFFLINE (" + failCount + "/" + CONFIG.failThreshold + " Fehlschläge)");
         
-        // Nach 90 Minuten (18 Fehlversuchen) Neustart auslösen
+        // Schwellenwert erreicht -> Neustart
         if (failCount >= CONFIG.failThreshold) {
-          print("Internet seit 90 Minuten weg. Führe Neustart aus...");
-          failCount = 0; // Sofort zurücksetzen -> Zählt für die nächsten 90 Min neu!
+          print(">>> DEBUG: Schwellenwert erreicht! Führe Neustart der FRITZ!Box aus... <<<");
+          failCount = 0; // Zähler für die nächsten Durchläufe zurücksetzen
           
           // Strom kurz kappen
           Shelly.call("Switch.Set", { id: 0, on: false });
           Timer.set(CONFIG.powerOffDuration, false, function() {
             Shelly.call("Switch.Set", { id: 0, on: true });
+            print(">>> DEBUG: Strom wieder EINGESCHALTET. Zähler läuft weiter. <<<");
           });
         }
       } else {
-        // Internet ist da -> Zähler auf 0 setzen
-        if (failCount > 0) print("Internet wieder da. Zähler zurückgesetzt.");
+        // Internet ist da -> Zähler für Fehlschläge zurücksetzen
+        print("DEBUG [Check #" + checkCount + "]: Internet ONLINE");
         failCount = 0;
       }
     }
   );
 }
 
-// Alle 5 Minuten ausführen
+// Skript-Start im Log anzeigen
+print("=== Watchdog-Testmodus gestartet (Intervall: 6s) ===");
+
+// Alle 6 Sekunden ausführen
 Timer.set(CONFIG.pingInterval, true, checkInternet);
