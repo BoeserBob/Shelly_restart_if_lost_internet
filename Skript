@@ -3,41 +3,54 @@
 // Ergebnisse des Tests werden an der Konsole ausgegeben.
 //
 
-
 let CONFIG = {
   target: "http://captive.apple.com/hotspot-detect.html", 
-  pingInterval: 300000,          // Test-Intervall: in ms
-  failThreshold: 10,            // Test-Schwellenwert: in akzeptierten Fehlversuchen
-  powerOffDuration: 15000       // 15 Sekunden Strom aus
+  pingInterval: 300000,         // Alle 5 Minuten prüfen (300.000 ms)
+  failThreshold: 18,            // 18 Versuche * 5 Min = 90 Min FRITZ!Box-Ausfall
+  powerOffDuration: 15000,      // 15 Sekunden Strom für FRITZ!Box aus
+  
+  // Wöchentlicher Eigen-Reboot des Shelly:
+  // 12 Checks/Std * 24 Std * 7 Tage = 2016 Checks (~7 Tage)
+  weeklyRebootThreshold: 2016
 };
 
 let failCount = 0;
+let totalCheckCount = 0;
 
 function checkInternet() {
+  totalCheckCount++;
+  
+  // 1. Prüfen, ob die Woche rum ist -> Shelly startet sich selbst neu
+  if (totalCheckCount >= CONFIG.weeklyRebootThreshold) {
+    print(">>> Watchdog: 7 Tage gelaufen. Führe geplanten Shelly-Eigenneustart aus... <<<");
+    Shelly.call("Shelly.Reboot");
+    return; // Bricht die Funktion hier ab
+  }
+
+  // 2. Normaler Internet-Check für die FRITZ!Box
   Shelly.call(
     "HTTP.GET",
-    { url: CONFIG.target, timeout: 30 }, // Timeout 30 sec für getaktete Verbindung mit 64kBit erforderlich. 
+    { url: CONFIG.target, timeout: 30 }, // 30s Timeout für gedrosselte Verbindungen
     function (result, error_code, error_message) {
       if (error_code !== 0) {
         failCount++;
-        // Neue, aufgeräumte Debug-Ausgabe mit Zähler (X/Y)
-        print("DEBUG: Internet OFFLINE (" + failCount + "/" + CONFIG.failThreshold + ") - Grund: " + error_message + " (Code: " + error_code + ")");
+        print("Watchdog: Internet OFFLINE (" + failCount + "/" + CONFIG.failThreshold + ") - Grund: " + error_message);
         
         if (failCount >= CONFIG.failThreshold) {
-          print(">>> DEBUG: Rebooting FRITZ!Box... <<<");
+          print(">>> Watchdog: 90 Minuten Ausfall! Starte FRITZ!Box neu... <<<");
           failCount = 0;
           
           Shelly.call("Switch.Set", { id: 0, on: false });
           Timer.set(CONFIG.powerOffDuration, false, function() {
             Shelly.call("Switch.Set", { id: 0, on: true });
+            print("Watchdog: FRITZ!Box Strom wieder eingeschaltet.");
           });
         }
       } else {
-        // Optionale Ausgabe, wenn es wieder geht
         if (failCount > 0) {
-          print("DEBUG: Internet wieder ONLINE. Zähler zurückgesetzt.");
+          print("Watchdog: Internet wieder ONLINE. Zähler zurückgesetzt.");
         } else {
-          print("DEBUG: Internet ONLINE");
+          print("Watchdog: Internet ONLINE (Uptime: " + Math.floor(totalCheckCount / 12) + " Std.)");
         }
         failCount = 0;
       }
@@ -45,5 +58,5 @@ function checkInternet() {
   );
 }
 
-print("=== Watchdog Diagnose-Modus gestartet ===");
+print("=== Watchdog Produktivmodus gestartet (inkl. wöchentlichem Eigen-Reboot) ===");
 Timer.set(CONFIG.pingInterval, true, checkInternet);
