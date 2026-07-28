@@ -1,7 +1,7 @@
-# Der Script prüft, ob eine Internetverbindung vorhanden ist und schalte nach 10 Fehlversuchen den Strom für 15sec ab, um die Fritzbox neu zu starten und damit die Verbindung neu zu initialisieren. 
-# Wichtig: Skript auf Run on Startup stellen!
-# Ergebnisse des Tests werden an der Konsole ausgegeben.
-#
+// Der Script prüft, ob eine Internetverbindung vorhanden ist und schalte nach 10 Fehlversuchen den Strom für 15sec ab, um die Fritzbox neu zu starten und damit die Verbindung neu zu initialisieren. 
+// Wichtig: Skript auf Run on Startup stellen!
+// Ergebnisse des Tests werden an der Konsole ausgegeben.
+//
 
 let CONFIG = {
   target: "http://neverssl.com", // Verlässlicher HTTP-Test
