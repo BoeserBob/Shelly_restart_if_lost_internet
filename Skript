@@ -1,0 +1,40 @@
+let CONFIG = {
+  target: "http://neverssl.com", // Verlässlicher HTTP-Test
+  pingInterval: 300000,         // Alle 5 Minuten prüfen (300.000 ms)
+  failThreshold: 18,            // 18 Versuche * 5 Min = 90 Minuten Ausfallzeit
+  powerOffDuration: 15000       // Strom für 15 Sekunden trennen
+};
+
+let failCount = 0;
+
+function checkInternet() {
+  Shelly.call(
+    "HTTP.GET",
+    { url: CONFIG.target, timeout: 10 },
+    function (result, error_code) {
+      if (error_code !== 0) {
+        failCount++;
+        print("Internet offline seit " + (failCount * 5) + " Minuten.");
+        
+        // Nach 90 Minuten (18 Fehlversuchen) Neustart auslösen
+        if (failCount >= CONFIG.failThreshold) {
+          print("Internet seit 90 Minuten weg. Führe Neustart aus...");
+          failCount = 0; // Sofort zurücksetzen -> Zählt für die nächsten 90 Min neu!
+          
+          // Strom kurz kappen
+          Shelly.call("Switch.Set", { id: 0, on: false });
+          Timer.set(CONFIG.powerOffDuration, false, function() {
+            Shelly.call("Switch.Set", { id: 0, on: true });
+          });
+        }
+      } else {
+        // Internet ist da -> Zähler auf 0 setzen
+        if (failCount > 0) print("Internet wieder da. Zähler zurückgesetzt.");
+        failCount = 0;
+      }
+    }
+  );
+}
+
+// Alle 5 Minuten ausführen
+Timer.set(CONFIG.pingInterval, true, checkInternet);
