@@ -3,49 +3,47 @@
 // Ergebnisse des Tests werden an der Konsole ausgegeben.
 //
 
+
 let CONFIG = {
-  target: "http://1.1.1.1",     // IP-Adresse verhindert DNS-Hänger
-  pingInterval: 6000,           // Alle 6 Sekunden testen
-  failThreshold: 10,            // Nach 10 Fehlschlägen Reboot
-  powerOffDuration: 15000
+  target: "http://captive.apple.com/hotspot-detect.html", 
+  pingInterval: 12000,          // Test-Intervall: 12 Sekunden (Später: 300000)
+  failThreshold: 10,            // Test-Schwellenwert: 10 (Später: 18)
+  powerOffDuration: 15000       // 15 Sekunden Strom aus
 };
 
-let checkCount = 0;
 let failCount = 0;
 
 function checkInternet() {
-  checkCount++;
-  
   Shelly.call(
     "HTTP.GET",
-    { 
-      url: CONFIG.target, 
-      timeout: 3,
-      headers: { "Connection": "close" } // Schließt den Socket sofort nach Antwort
-    },
-    function (result, error_code) {
+    { url: CONFIG.target, timeout: 8 }, // Timeout für Test auf 8s (Später gern 20)
+    function (result, error_code, error_message) {
       if (error_code !== 0) {
         failCount++;
-        print("DEBUG [Check #" + checkCount + "]: Internet OFFLINE (" + failCount + "/" + CONFIG.failThreshold + ")");
+        // Neue, aufgeräumte Debug-Ausgabe mit Zähler (X/Y)
+        print("DEBUG: Internet OFFLINE (" + failCount + "/" + CONFIG.failThreshold + ") - Grund: " + error_message + " (Code: " + error_code + ")");
         
         if (failCount >= CONFIG.failThreshold) {
           print(">>> DEBUG: Rebooting FRITZ!Box... <<<");
           failCount = 0;
+          
           Shelly.call("Switch.Set", { id: 0, on: false });
           Timer.set(CONFIG.powerOffDuration, false, function() {
             Shelly.call("Switch.Set", { id: 0, on: true });
           });
         }
       } else {
-        print("DEBUG [Check #" + checkCount + "]: Internet ONLINE");
+        // Optionale Ausgabe, wenn es wieder geht
+        if (failCount > 0) {
+          print("DEBUG: Internet wieder ONLINE. Zähler zurückgesetzt.");
+        } else {
+          print("DEBUG: Internet ONLINE");
+        }
         failCount = 0;
       }
     }
   );
 }
 
-print("=== Watchdog mit IP-Test gestartet ===");
-Timer.set(CONFIG.pingInterval, true, checkInternet);
-
-// Alle 6 Sekunden ausführen
+print("=== Watchdog Diagnose-Modus gestartet ===");
 Timer.set(CONFIG.pingInterval, true, checkInternet);
