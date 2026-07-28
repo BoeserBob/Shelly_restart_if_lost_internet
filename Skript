@@ -6,7 +6,7 @@
 
 let CONFIG = {
   target: "http://captive.apple.com/hotspot-detect.html", 
-  pingInterval: 12000,          // Test-Intervall: 12 Sekunden (Später: 300000)
+  pingInterval: 300000,          // Test-Intervall: 12 Sekunden (Später: 300000)
   failThreshold: 10,            // Test-Schwellenwert: 10 (Später: 18)
   powerOffDuration: 15000       // 15 Sekunden Strom aus
 };
@@ -16,7 +16,7 @@ let failCount = 0;
 function checkInternet() {
   Shelly.call(
     "HTTP.GET",
-    { url: CONFIG.target, timeout: 8 }, // Timeout für Test auf 8s (Später gern 20)
+    { url: CONFIG.target, timeout: 30 }, // Timeout 30 sec
     function (result, error_code, error_message) {
       if (error_code !== 0) {
         failCount++;
