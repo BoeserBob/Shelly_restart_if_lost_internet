@@ -1,7 +1,7 @@
 let CONFIG = {
   target: "http://neverssl.com", // Verlässlicher HTTP-Test
-  pingInterval: 6000,           // Test-Modus: Alle 6 Sekunden prüfen (6000 ms)
-  failThreshold: 10,            // Test-Modus: Nach 10 Fehlschlägen (60 Sek.) Neustart
+  pingInterval: 6000,           // Test-Modus: Alle x Sekunden prüfen (x000 ms)
+  failThreshold: 10,            // Test-Modus: Nach 10 Fehlschlägen Neustart
   powerOffDuration: 15000       // Strom für 15 Sekunden trennen
 };
 
@@ -13,7 +13,7 @@ function checkInternet() {
   
   Shelly.call(
     "HTTP.GET",
-    { url: CONFIG.target, timeout: 3 },
+    { url: CONFIG.target, timeout: 45 },
     function (result, error_code) {
       if (error_code !== 0) {
         failCount++;
@@ -41,7 +41,7 @@ function checkInternet() {
 }
 
 // Skript-Start im Log anzeigen
-print("=== Watchdog-Testmodus gestartet (Intervall: 6s) ===");
+print("=== Watchdog-Testmodus gestartet ===");
 
 // Alle 6 Sekunden ausführen
 Timer.set(CONFIG.pingInterval, true, checkInternet);
