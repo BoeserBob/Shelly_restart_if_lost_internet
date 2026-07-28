@@ -4,40 +4,39 @@
 //
 
 let CONFIG = {
-  target: "http://neverssl.com", // Verlässlicher HTTP-Test
-  pingInterval: 60000,           // Test-Modus: Alle x Sekunden prüfen (x000 ms)
-  failThreshold: 10,            // Test-Modus: Nach 10 Fehlschlägen Neustart
-  powerOffDuration: 15000       // Strom für 15 Sekunden trennen
+  target: "http://1.1.1.1",     // IP-Adresse verhindert DNS-Hänger
+  pingInterval: 6000,           // Alle 6 Sekunden testen
+  failThreshold: 10,            // Nach 10 Fehlschlägen Reboot
+  powerOffDuration: 15000
 };
 
-let checkCount = 0; // Gesamtzahl aller durchgeführten Checks
-let failCount = 0;  // Zähler für aufeinanderfolgende Fehlschläge
+let checkCount = 0;
+let failCount = 0;
 
 function checkInternet() {
-  checkCount++; // Gesamtzähler bei jedem Durchlauf erhöhen
+  checkCount++;
   
   Shelly.call(
     "HTTP.GET",
-    { url: CONFIG.target, timeout: 45 },
+    { 
+      url: CONFIG.target, 
+      timeout: 3,
+      headers: { "Connection": "close" } // Schließt den Socket sofort nach Antwort
+    },
     function (result, error_code) {
       if (error_code !== 0) {
         failCount++;
-        print("DEBUG [Check #" + checkCount + "]: Internet OFFLINE (" + failCount + "/" + CONFIG.failThreshold + " Fehlschläge)");
+        print("DEBUG [Check #" + checkCount + "]: Internet OFFLINE (" + failCount + "/" + CONFIG.failThreshold + ")");
         
-        // Schwellenwert erreicht -> Neustart
         if (failCount >= CONFIG.failThreshold) {
-          print(">>> DEBUG: Schwellenwert erreicht! Führe Neustart der FRITZ!Box aus... <<<");
-          failCount = 0; // Zähler für die nächsten Durchläufe zurücksetzen
-          
-          // Strom kurz kappen
+          print(">>> DEBUG: Rebooting FRITZ!Box... <<<");
+          failCount = 0;
           Shelly.call("Switch.Set", { id: 0, on: false });
           Timer.set(CONFIG.powerOffDuration, false, function() {
             Shelly.call("Switch.Set", { id: 0, on: true });
-            print(">>> DEBUG: Strom wieder EINGESCHALTET. Zähler läuft weiter. <<<");
           });
         }
       } else {
-        // Internet ist da -> Zähler für Fehlschläge zurücksetzen
         print("DEBUG [Check #" + checkCount + "]: Internet ONLINE");
         failCount = 0;
       }
@@ -45,8 +44,8 @@ function checkInternet() {
   );
 }
 
-// Skript-Start im Log anzeigen
-print("=== Watchdog-Testmodus gestartet ===");
+print("=== Watchdog mit IP-Test gestartet ===");
+Timer.set(CONFIG.pingInterval, true, checkInternet);
 
 // Alle 6 Sekunden ausführen
 Timer.set(CONFIG.pingInterval, true, checkInternet);
