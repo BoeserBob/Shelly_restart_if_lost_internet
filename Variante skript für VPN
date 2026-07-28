@@ -1,0 +1,66 @@
+// Der Script prüft, ob eine Verbindung von der fernen Fritzbox zur lokalen Fritzbox per VPN Tunnel vorhanden ist und schalte nach 10 Fehlversuchen den Strom für 15sec ab, um die Fritzbox neu zu starten und damit die Verbindung neu zu initialisieren. 
+// Wichtig: Skript auf Run on Startup stellen!
+// Wichtig: Zur sicherheit Plug auf "Einschalten wenn 15 Sekunden aus" stellen.
+// Ergebnisse des Tests werden an der Konsole ausgegeben.
+
+
+let CONFIG = {
+  // Ziel: LAN-IP deiner Heimat-FRITZ!Box durch den IPSec-Tunnel
+  target: "http://192.168.188.1", 
+  
+  pingInterval: 12000,         // Alle 5 Minuten prüfen (300.000 ms)
+  failThreshold: 18,            // 18 Versuche * 5 Min = 90 Minuten VPN-Ausfallzeit
+  powerOffDuration: 15000,      // 15 Sekunden Strom für ferne FRITZ!Box aus
+  
+  // Wöchentlicher Eigen-Reboot des Shelly (2016 Checks * 5 Min = 7 Tage)
+  weeklyRebootThreshold: 2016
+};
+
+let failCount = 0;
+let totalCheckCount = 0;
+
+function checkVpnTunnel() {
+  totalCheckCount++;
+  
+  // 1. Geplanter Eigen-Reboot des Shelly nach 7 Tagen ("Reboot tut gut")
+  if (totalCheckCount >= CONFIG.weeklyRebootThreshold) {
+    print(">>> Watchdog: 7 Tage gelaufen. Führe geplanten Shelly-Eigenneustart aus... <<<");
+    Shelly.call("Shelly.Reboot");
+    return;
+  }
+
+  // 2. Erreichbarkeit der Heimat-FRITZ!Box durch den IPSec-Tunnel prüfen
+  Shelly.call(
+    "HTTP.GET",
+    { url: CONFIG.target, timeout: 30 }, // 30s Timeout für gedrosselte/schwankende LTE-Verbindungen
+    function (result, error_code, error_message) {
+      if (error_code !== 0) {
+        failCount++;
+        print("Watchdog: VPN-Tunnel OFFLINE (" + failCount + "/" + CONFIG.failThreshold + ") - Grund: " + error_message);
+        
+        // Nach 90 Minuten durchgehendem Tunnel-Ausfall -> Ferne FRITZ!Box neu starten
+        if (failCount >= CONFIG.failThreshold) {
+          print(">>> Watchdog: VPN-Tunnel seit 90 Minuten getrennt! Starte ferne FRITZ!Box neu... <<<");
+          failCount = 0;
+          
+          Shelly.call("Switch.Set", { id: 0, on: false });
+          Timer.set(CONFIG.powerOffDuration, false, function() {
+            Shelly.call("Switch.Set", { id: 0, on: true });
+            print("Watchdog: Strom der fernen FRITZ!Box wieder eingeschaltet.");
+          });
+        }
+      } else {
+        // Tunnel ist aktiv und die Heim-FRITZ!Box antwortet
+        if (failCount > 0) {
+          print("Watchdog: VPN-Tunnel wieder ONLINE. Zähler zurückgesetzt.");
+        } else {
+          print("Watchdog: VPN-Tunnel OK (Home-IP erreichbar | Laufzeit: " + Math.floor((totalCheckCount * 5) / 60) + " Std.)");
+        }
+        failCount = 0;
+      }
+    }
+  );
+}
+
+print("=== Watchdog VPN-Tunnel-Überwachung gestartet ===");
+Timer.set(CONFIG.pingInterval, true, checkVpnTunnel);
