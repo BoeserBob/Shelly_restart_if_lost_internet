@@ -1,4 +1,4 @@
-// Der Script prüft, ob eine Verbindung von der fernen Fritzbox zur lokalen Fritzbox per VPN Tunnel vorhanden ist und schalte nach 10 Fehlversuchen den Strom für 15sec ab, um die Fritzbox neu zu starten und damit die Verbindung neu zu initialisieren. 
+/ Der Script prüft, ob eine Verbindung von der fernen Fritzbox zur lokalen Fritzbox per VPN Tunnel vorhanden ist und schalte nach 10 Fehlversuchen den Strom für 15sec ab, um die Fritzbox neu zu starten und damit die Verbindung neu zu initialisieren. 
 // Wichtig: Skript auf Run on Startup stellen!
 // Wichtig: Zur sicherheit Plug auf "Einschalten wenn 15 Sekunden aus" stellen.
 // Ergebnisse des Tests werden an der Konsole ausgegeben.
@@ -8,9 +8,9 @@ let CONFIG = {
   // Ziel: LAN-IP deiner Heimat-FRITZ!Box durch den IPSec-Tunnel
   target: "http://192.168.188.1", 
   
-  pingInterval: 12000,         // Alle 5 Minuten prüfen (300.000 ms)
+  pingInterval: 300000,         // Alle 5 Minuten prüfen (300.000 ms)
   failThreshold: 18,            // 18 Versuche * 5 Min = 90 Minuten VPN-Ausfallzeit
-  powerOffDuration: 15000,      // 15 Sekunden Strom für ferne FRITZ!Box aus
+  powerOffDuration: 5000,      // 5 Sekunden Strom für ferne FRITZ!Box aus
   
   // Wöchentlicher Eigen-Reboot des Shelly (2016 Checks * 5 Min = 7 Tage)
   weeklyRebootThreshold: 2016
