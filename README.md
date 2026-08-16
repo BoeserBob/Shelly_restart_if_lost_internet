@@ -5,7 +5,9 @@ An dem Shelly Plug hängen die FritzBox und der LTE-Stick für die Datenverbindu
 Wenn die VPN Verbindung länger als 180 Minuten verloren geht schaltet der Script die Shelly Plug aus.
 
 WICHTIG: Auf der Shelly Plug muss unbedingt eingerichtet werden: 
-- dass sie sich nach einigen Sekunden wieder selbst einschaltet 
-- und der Ausgang eingeschaltet wird, wenn der Shelly mit Strom versorgt wird (um einen Wiederanlauf nach Stromausfall sicher zu stellen).
+- Um den Router nach dem Reset wieder zu starten: Shelly Plug muss den Strom nach einigen Sekunden wieder selbst einschalten 
+- Um einen Wiederanlauf nach Stromausfall sicher zu stellen: Shelly Plug Eingangs-/ Ausgangseinstellungen auf "Konfiguriere das Shelly Gerät so, dass es angeht, wenn es mit Strom versorgt wird" einstellen.
+
+... sonst heist es hinfahren und von Hand wieder einschalten :-)
 
 
