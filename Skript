@@ -1,5 +1,11 @@
 // Der Script prüft, ob eine Internetverbindung vorhanden ist und schalte nach 10 Fehlversuchen den Strom für 15sec ab, um die Fritzbox neu zu starten und damit die Verbindung neu zu initialisieren. 
 // Wichtig: Skript auf Run on Startup stellen!
+// Wichtig: Shelly Plug Eingangs-/Ausgangseinstellungen auf "Konfiguriere das Shelly Gerät so, dass es angeht, wenn es mit Strom versorgt wird" einstellen.
+
+Standard-Einschaltzustand des Relais festlegen
+
+
+Konfiguriere das Shelly Gerät so, dass es angeht, wenn es mit Strom versorgt wird.
 // Ergebnisse des Tests werden an der Konsole ausgegeben.
 //
 
