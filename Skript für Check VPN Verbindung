@@ -1,16 +1,17 @@
 // Der Script prüft, ob eine Internetverbindung vorhanden ist und schalte nach 10 Fehlversuchen den Strom für 15sec ab, um die Fritzbox neu zu starten und damit die Verbindung neu zu initialisieren. 
 // Wichtig: Skript auf Run on Startup stellen!
-// Wichtig: Shelly Plug Eingangs-/Ausgangseinstellungen auf "Konfiguriere das Shelly Gerät so, dass es angeht, wenn es mit Strom versorgt wird" einstellen.
+// Der Script trifft folgende Einstellungen im Shelly Plug:
+// Shelly Plug Eingangs-/Ausgangseinstellungen auf "Konfiguriere das Shelly Gerät so, dass es angeht, wenn es mit Strom versorgt wird" einstellen.
+// Power off Duration 
 // Ergebnisse des Tests werden an der Konsole ausgegeben.
  
-
 let CONFIG = {
   // Ziel: LAN-IP deiner Heimat-FRITZ!Box durch den IPSec-Tunnel
   target: "http://192.168.188.1", 
   
-  pingInterval: 300000,         // Alle 5 Minuten prüfen (300.000 ms)
-  failThreshold: 18,            // 18 Versuche * 5 Min = 90 Minuten VPN-Ausfallzeit
-  powerOffDuration: 5000,      // 5 Sekunden Strom für ferne FRITZ!Box aus
+  pingInterval: 300000,         // Alle x Minuten prüfen (xxx.xxx ms)
+  failThreshold: 18,            // x Versuche * x Min = xx Minuten VPN-Ausfallzeit
+  powerOffDuration: 9,          // x Sekunden Strom für ferne FRITZ!Box aus (in Sekunden für Auto-On)
   
   // Wöchentlicher Eigen-Reboot des Shelly (2016 Checks * 5 Min = 7 Tage)
   weeklyRebootThreshold: 2016
@@ -18,6 +19,28 @@ let CONFIG = {
 
 let failCount = 0;
 let totalCheckCount = 0;
+
+// Automatisches Setzen der Hardwareschutzeinstellungen beim Start
+function configureShellySettings() {
+  Shelly.call(
+    "Switch.SetConfig",
+    {
+      id: 0,
+      config: {
+        initial_state: "on",                      // Nach Stromausfall automatisch einschalten
+        auto_on: true,                            // Hardware-Timer für automatisches Wiedereinschalten aktivieren
+        auto_on_delay: CONFIG.powerOffDuration    // Sekunden bis zum automatischen Wiedereinschalten
+      }
+    },
+    function (result, error_code, error_message) {
+      if (error_code === 0) {
+        print("Watchdog: Hardware-Sicherheitseinstellungen (Initial State & Auto-ON) erfolgreich gesetzt.");
+      } else {
+        print("Watchdog Fehler beim Setzen der Einstellungen: " + error_message);
+      }
+    }
+  );
+}
 
 function checkVpnTunnel() {
   totalCheckCount++;
@@ -43,8 +66,10 @@ function checkVpnTunnel() {
           print(">>> Watchdog: VPN-Tunnel seit 90 Minuten getrennt! Starte ferne FRITZ!Box neu... <<<");
           failCount = 0;
           
+          // Ausschalten: Der Auto-On-Timer des Shelly kümmert sich zur Sicherheit selbst um das Einschalten.
+          // Der JS-Timer dient hier als primärer Trigger.
           Shelly.call("Switch.Set", { id: 0, on: false });
-          Timer.set(CONFIG.powerOffDuration, false, function() {
+          Timer.set(CONFIG.powerOffDuration * 1000, false, function() {
             Shelly.call("Switch.Set", { id: 0, on: true });
             print("Watchdog: Strom der fernen FRITZ!Box wieder eingeschaltet.");
           });
@@ -63,4 +88,9 @@ function checkVpnTunnel() {
 }
 
 print("=== Watchdog VPN-Tunnel-Überwachung gestartet ===");
+
+// 1. Einstellungen auf dem Shelly-Relais anwenden
+configureShellySettings();
+
+// 2. Prüf-Intervall starten
 Timer.set(CONFIG.pingInterval, true, checkVpnTunnel);
