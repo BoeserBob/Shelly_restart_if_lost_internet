@@ -2,7 +2,7 @@
 // Wichtig: Skript auf Run on Startup stellen!
 // Wichtig: Shelly Plug Eingangs-/Ausgangseinstellungen auf "Konfiguriere das Shelly Gerät so, dass es angeht, wenn es mit Strom versorgt wird" einstellen.
 // Ergebnisse des Tests werden an der Konsole ausgegeben.
-
+ 
 
 let CONFIG = {
   // Ziel: LAN-IP deiner Heimat-FRITZ!Box durch den IPSec-Tunnel
